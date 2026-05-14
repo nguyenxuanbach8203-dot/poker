@@ -1,0 +1,53 @@
+import React, { useState, useEffect } from 'react';
+import io from 'socket.io-client';
+import './App.css';
+import PokerTable from './components/PokerTable';
+import JoinGame from './components/JoinGame';
+
+const socket = io('http://localhost:3001');
+
+function App() {
+  const [gameState, setGameState] = useState(null);
+  const [joined, setJoined] = useState(false);
+  const [playerId, setPlayerId] = useState(null);
+
+  useEffect(() => {
+    socket.on('connect', () => {
+      setPlayerId(socket.id);
+    });
+
+    socket.on('gameState', (state) => {
+      setGameState(state);
+    });
+
+    return () => {
+      socket.off('connect');
+      socket.off('gameState');
+    };
+  }, []);
+
+  const handleJoinGame = (gameId, playerName, buyIn) => {
+    socket.emit('joinGame', { gameId, playerName, buyIn });
+    setJoined(true);
+  };
+
+  const handleAction = (action, amount = 0) => {
+    socket.emit('action', { action, amount });
+  };
+
+  return (
+    <div className="App">
+      {!joined ? (
+        <JoinGame onJoin={handleJoinGame} />
+      ) : (
+        <PokerTable 
+          gameState={gameState} 
+          playerId={playerId}
+          onAction={handleAction}
+        />
+      )}
+    </div>
+  );
+}
+
+export default App;
