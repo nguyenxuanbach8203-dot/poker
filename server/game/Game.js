@@ -1,5 +1,6 @@
 const Deck = require('./Deck');
 const { evaluateHand, compareHands } = require('./HandEvaluator');
+const PokerBot = require('./PokerBot');
 
 class Game {
   constructor(id, io) {
@@ -15,9 +16,11 @@ class Game {
     this.stage = 'waiting'; // waiting, preflop, flop, turn, river, showdown
     this.smallBlind = 10;
     this.bigBlind = 20;
+    this.bots = [];
+    this.botThinking = false;
   }
 
-  addPlayer(player) {
+  addPlayer(player, isBot = false) {
     if (this.players.length >= 9) return false;
     
     this.players.push({
@@ -25,13 +28,32 @@ class Game {
       cards: [],
       bet: 0,
       folded: false,
-      allIn: false
+      allIn: false,
+      isBot: isBot
     });
 
     if (this.players.length >= 2 && this.stage === 'waiting') {
       this.startNewRound();
     }
     return true;
+  }
+
+  addBots(numBots) {
+    const botNames = ['Bot Alpha', 'Bot Beta', 'Bot Gamma', 'Bot Delta', 'Bot Epsilon', 'Bot Zeta', 'Bot Eta', 'Bot Theta'];
+    
+    for (let i = 0; i < numBots && this.players.length < 9; i++) {
+      const bot = new PokerBot(
+        `bot_${Date.now()}_${i}`,
+        botNames[i] || `Bot ${i + 1}`,
+        1000
+      );
+      this.bots.push(bot);
+      this.addPlayer({
+        id: bot.id,
+        name: bot.name,
+        chips: bot.chips
+      }, true);
+    }
   }
 
   removePlayer(playerId) {
@@ -71,6 +93,22 @@ class Game {
     this.players.forEach(player => {
       player.cards = [this.deck.draw(), this.deck.draw()];
     });
+
+    // Trigger bot action if first player is bot
+    setTimeout(() => {
+      const firstPlayer = this.players[this.currentPlayerIndex];
+      if (firstPlayer && firstPlayer.isBot && !this.botThinking) {
+        this.botThinking = true;
+        const bot = this.bots.find(b => b.id === firstPlayer.id);
+        if (bot) {
+          bot.makeDecision(this.getState(), firstPlayer).then(decision => {
+            this.botThinking = false;
+            this.handleAction(firstPlayer.id, decision.action, decision.amount || 0);
+            this.io.to(this.id).emit('gameState', this.getState());
+          });
+        }
+      }
+    }, 500);
   }
 
   handleAction(playerId, action, amount = 0) {
@@ -120,14 +158,34 @@ class Game {
     }
 
     let startIndex = this.currentPlayerIndex;
+    let attempts = 0;
     do {
       this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+      attempts++;
+      if (attempts > this.players.length) break;
     } while (this.players[this.currentPlayerIndex].folded || this.players[this.currentPlayerIndex].allIn);
 
     // Check if betting round is complete
     const allBetsEqual = activePlayers.every(p => p.bet === this.currentBet);
     if (allBetsEqual && this.currentPlayerIndex === startIndex) {
       this.nextStage();
+      return;
+    }
+
+    // If current player is a bot, make it play
+    const currentPlayer = this.players[this.currentPlayerIndex];
+    if (currentPlayer && currentPlayer.isBot && !this.botThinking) {
+      this.botThinking = true;
+      this.io.to(this.id).emit('gameState', this.getState());
+      
+      const bot = this.bots.find(b => b.id === currentPlayer.id);
+      if (bot) {
+        bot.makeDecision(this.getState(), currentPlayer).then(decision => {
+          this.botThinking = false;
+          this.handleAction(currentPlayer.id, decision.action, decision.amount || 0);
+          this.io.to(this.id).emit('gameState', this.getState());
+        });
+      }
     }
   }
 

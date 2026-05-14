@@ -26,8 +26,8 @@ function App() {
     };
   }, []);
 
-  const handleJoinGame = (gameId, playerName, buyIn) => {
-    socket.emit('joinGame', { gameId, playerName, buyIn });
+  const handleJoinGame = (gameId, playerName, buyIn, gameMode, numBots) => {
+    socket.emit('joinGame', { gameId, playerName, buyIn, gameMode, numBots });
     setJoined(true);
   };
 

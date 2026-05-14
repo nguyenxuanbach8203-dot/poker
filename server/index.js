@@ -22,7 +22,7 @@ const players = new Map();
 io.on('connection', (socket) => {
   console.log('Player connected:', socket.id);
 
-  socket.on('joinGame', ({ gameId, playerName, buyIn }) => {
+  socket.on('joinGame', ({ gameId, playerName, buyIn, gameMode, numBots }) => {
     let game = games.get(gameId);
     
     if (!game) {
@@ -40,6 +40,12 @@ io.on('connection', (socket) => {
     socket.join(gameId);
     
     game.addPlayer(player);
+    
+    // Add bots if AI mode
+    if (gameMode === 'ai' && numBots > 0) {
+      game.addBots(numBots);
+    }
+    
     io.to(gameId).emit('gameState', game.getState());
   });
 

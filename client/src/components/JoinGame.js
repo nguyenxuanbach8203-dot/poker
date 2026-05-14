@@ -4,11 +4,13 @@ function JoinGame({ onJoin }) {
   const [gameId, setGameId] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [buyIn, setBuyIn] = useState(1000);
+  const [gameMode, setGameMode] = useState('multiplayer'); // 'multiplayer' or 'ai'
+  const [numBots, setNumBots] = useState(3);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (gameId && playerName) {
-      onJoin(gameId, playerName, buyIn);
+      onJoin(gameId, playerName, buyIn, gameMode, numBots);
     }
   };
 
@@ -50,8 +52,41 @@ function JoinGame({ onJoin }) {
           />
         </div>
         
+        <div className="form-group">
+          <label>Chế độ chơi</label>
+          <select 
+            value={gameMode} 
+            onChange={(e) => setGameMode(e.target.value)}
+            style={{
+              padding: '12px',
+              border: '2px solid #ddd',
+              borderRadius: '8px',
+              fontSize: '1em',
+              width: '100%',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="multiplayer">Chơi với người</option>
+            <option value="ai">Chơi với máy (AI)</option>
+          </select>
+        </div>
+        
+        {gameMode === 'ai' && (
+          <div className="form-group">
+            <label>Số lượng bot (1-8)</label>
+            <input
+              type="number"
+              value={numBots}
+              onChange={(e) => setNumBots(Number(e.target.value))}
+              min="1"
+              max="8"
+              required
+            />
+          </div>
+        )}
+        
         <button type="submit" className="join-button">
-          Vào bàn chơi
+          {gameMode === 'ai' ? `Chơi với ${numBots} bot` : 'Vào bàn chơi'}
         </button>
       </form>
     </div>
