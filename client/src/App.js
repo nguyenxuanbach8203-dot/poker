@@ -4,7 +4,7 @@ import './App.css';
 import PokerTable from './components/PokerTable';
 import JoinGame from './components/JoinGame';
 
-const socket = io('http://localhost:3001');
+const socket = io(process.env.REACT_APP_SOCKET_URL || 'https://poker-server-production-7494.up.railway.app');
 
 function App() {
   const [gameState, setGameState] = useState(null);
